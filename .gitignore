@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 /data/bot.db
 /data/inbound_1.json
+/data/bot.db-shm
+/data/bot.db-wal
