@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+clear
+
 APP_DIR="/opt/3xui-shopbot"
 REPO_URL="https://github.com/Behterr/3xui-shopbot.git"
 
