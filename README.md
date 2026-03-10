@@ -30,6 +30,63 @@ https://github.com/Behterr/3xui-shopbot.git
 4. Запуск бота:
    python src/main.py
 
+## Установка на VPS (Ubuntu)
+
+1. Обновите пакеты и установите Python:
+   sudo apt update
+   sudo apt install -y python3 python3-venv python3-pip
+
+2. Клонируйте репозиторий и перейдите в папку:
+   git clone https://github.com/Behterr/3xui-shopbot.git
+   cd 3xui-shopbot
+
+3. Создайте виртуальное окружение и установите зависимости:
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+
+4. Создайте `.env` на основе `.env.example` и заполните значения:
+   cp .env.example .env
+   nano .env
+
+5. Запуск бота:
+   python src/main.py
+
+## systemd сервис (Ubuntu)
+
+Создайте файл `/etc/systemd/system/xui-bot.service`:
+
+```
+[Unit]
+Description=XUI Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/3xui-shopbot
+EnvironmentFile=/home/ubuntu/3xui-shopbot/.env
+ExecStart=/home/ubuntu/3xui-shopbot/.venv/bin/python /home/ubuntu/3xui-shopbot/src/main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Дальше включите сервис:
+```
+sudo systemctl daemon-reload
+sudo systemctl enable xui-bot
+sudo systemctl start xui-bot
+sudo systemctl status xui-bot
+```
+
+Для логов:
+```
+sudo journalctl -u xui-bot -f
+```
+
 ## Админ‑панель (локально)
 
 1. Установите зависимости:
