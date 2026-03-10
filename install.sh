@@ -25,9 +25,19 @@ read -r -p "Subscription base URL (SUBSCRIPTION_BASE_URL): " SUBSCRIPTION_BASE_U
 read -r -p "Support username without @ (SUPPORT_USERNAME) [optional]: " SUPPORT_USERNAME
 read -r -p "Support TG ID (SUPPORT_TG_ID) [optional]: " SUPPORT_TG_ID
 
-read -r -p "Admin web login (ADMIN_WEB_USER): " ADMIN_WEB_USER
-read -r -p "Admin web password (ADMIN_WEB_PASSWORD): " ADMIN_WEB_PASSWORD
-read -r -p "Admin web session secret (ADMIN_WEB_SECRET): " ADMIN_WEB_SECRET
+read -r -p "Install admin web panel? (y/N): " INSTALL_ADMIN_WEB
+INSTALL_ADMIN_WEB="${INSTALL_ADMIN_WEB:-N}"
+INSTALL_ADMIN_WEB="$(echo "$INSTALL_ADMIN_WEB" | tr '[:upper:]' '[:lower:]')"
+
+if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
+  read -r -p "Admin web login (ADMIN_WEB_USER): " ADMIN_WEB_USER
+  read -r -p "Admin web password (ADMIN_WEB_PASSWORD): " ADMIN_WEB_PASSWORD
+  read -r -p "Admin web session secret (ADMIN_WEB_SECRET): " ADMIN_WEB_SECRET
+else
+  ADMIN_WEB_USER=""
+  ADMIN_WEB_PASSWORD=""
+  ADMIN_WEB_SECRET=""
+fi
 
 read -r -p "Default currency (DEFAULT_CURRENCY) [XTR]: " DEFAULT_CURRENCY
 DEFAULT_CURRENCY="${DEFAULT_CURRENCY:-XTR}"
@@ -87,6 +97,7 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
+if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
 sudo tee /etc/systemd/system/xui-admin.service > /dev/null <<EOF
 [Unit]
 Description=XUI Admin Panel
@@ -104,13 +115,21 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
+fi
 
 echo "== Enabling services =="
 sudo systemctl daemon-reload
-sudo systemctl enable xui-bot xui-admin
-sudo systemctl restart xui-bot xui-admin
+if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
+  sudo systemctl enable xui-bot xui-admin
+  sudo systemctl restart xui-bot xui-admin
+else
+  sudo systemctl enable xui-bot
+  sudo systemctl restart xui-bot
+fi
 
 echo "== Done =="
 echo "Bot:    sudo systemctl status xui-bot"
-echo "Admin:  sudo systemctl status xui-admin"
+if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
+  echo "Admin:  sudo systemctl status xui-admin"
+fi
 echo "Logs:   sudo journalctl -u xui-bot -f"
