@@ -8,8 +8,6 @@ echo "== Установщик 3X-UI ShopBot (Ubuntu) =="
 
 echo "Папка установки: ${APP_DIR}"
 
-read -r -p "URL репозитория Git [${REPO_URL}]: " input_repo
-REPO_URL="${input_repo:-$REPO_URL}"
 
 read -r -p "Токен бота (BOT_TOKEN): " BOT_TOKEN
 read -r -p "Юзернейм бота без @ (BOT_USERNAME): " BOT_USERNAME
