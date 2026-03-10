@@ -4,62 +4,62 @@ set -euo pipefail
 APP_DIR="/opt/3xui-shopbot"
 REPO_URL="https://github.com/Behterr/3xui-shopbot.git"
 
-echo "== 3X-UI ShopBot installer (Ubuntu) =="
+echo "== Установщик 3X-UI ShopBot (Ubuntu) =="
 
-read -r -p "Install directory [/opt/3xui-shopbot]: " input_dir
+read -r -p "Папка установки [/opt/3xui-shopbot]: " input_dir
 APP_DIR="${input_dir:-$APP_DIR}"
 
-read -r -p "Git repo URL [${REPO_URL}]: " input_repo
+read -r -p "URL репозитория Git [${REPO_URL}]: " input_repo
 REPO_URL="${input_repo:-$REPO_URL}"
 
-read -r -p "Bot token (BOT_TOKEN): " BOT_TOKEN
-read -r -p "Bot username without @ (BOT_USERNAME): " BOT_USERNAME
-read -r -p "3X-UI base URL (XUI_BASE_URL): " XUI_BASE_URL
-read -r -p "3X-UI web base path (XUI_WEB_BASE_PATH) [empty if none]: " XUI_WEB_BASE_PATH
-read -r -p "3X-UI username (XUI_USERNAME): " XUI_USERNAME
-read -r -p "3X-UI password (XUI_PASSWORD): " XUI_PASSWORD
+read -r -p "Токен бота (BOT_TOKEN): " BOT_TOKEN
+read -r -p "Юзернейм бота без @ (BOT_USERNAME): " BOT_USERNAME
+read -r -p "URL панели 3X-UI (XUI_BASE_URL): " XUI_BASE_URL
+read -r -p "Путь панели 3X-UI (XUI_WEB_BASE_PATH) [пусто если нет]: " XUI_WEB_BASE_PATH
+read -r -p "Логин 3X-UI (XUI_USERNAME): " XUI_USERNAME
+read -r -p "Пароль 3X-UI (XUI_PASSWORD): " XUI_PASSWORD
 read -r -p "XUI_INSECURE (true/false) [false]: " XUI_INSECURE
 XUI_INSECURE="${XUI_INSECURE:-false}"
 
-read -r -p "Subscription base URL (SUBSCRIPTION_BASE_URL): " SUBSCRIPTION_BASE_URL
-read -r -p "Support username without @ (SUPPORT_USERNAME) [optional]: " SUPPORT_USERNAME
-read -r -p "Support TG ID (SUPPORT_TG_ID) [optional]: " SUPPORT_TG_ID
+read -r -p "Базовый URL подписки (SUBSCRIPTION_BASE_URL): " SUBSCRIPTION_BASE_URL
+read -r -p "Юзернейм поддержки без @ (SUPPORT_USERNAME) [необязательно]: " SUPPORT_USERNAME
+read -r -p "TG ID поддержки (SUPPORT_TG_ID) [необязательно]: " SUPPORT_TG_ID
 
-read -r -p "Install admin web panel? (y/N): " INSTALL_ADMIN_WEB
+read -r -p "Устанавливать веб‑панель администратора? (y/N): " INSTALL_ADMIN_WEB
 INSTALL_ADMIN_WEB="${INSTALL_ADMIN_WEB:-N}"
 INSTALL_ADMIN_WEB="$(echo "$INSTALL_ADMIN_WEB" | tr '[:upper:]' '[:lower:]')"
 
 if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
-  read -r -p "Admin web login (ADMIN_WEB_USER): " ADMIN_WEB_USER
-  read -r -p "Admin web password (ADMIN_WEB_PASSWORD): " ADMIN_WEB_PASSWORD
-  read -r -p "Admin web session secret (ADMIN_WEB_SECRET): " ADMIN_WEB_SECRET
+  read -r -p "Логин веб‑админки (ADMIN_WEB_USER): " ADMIN_WEB_USER
+  read -r -p "Пароль веб‑админки (ADMIN_WEB_PASSWORD): " ADMIN_WEB_PASSWORD
+  read -r -p "Секрет сессий (ADMIN_WEB_SECRET): " ADMIN_WEB_SECRET
 else
   ADMIN_WEB_USER=""
   ADMIN_WEB_PASSWORD=""
   ADMIN_WEB_SECRET=""
 fi
 
-read -r -p "Default currency (DEFAULT_CURRENCY) [XTR]: " DEFAULT_CURRENCY
+read -r -p "Валюта по умолчанию (DEFAULT_CURRENCY) [XTR]: " DEFAULT_CURRENCY
 DEFAULT_CURRENCY="${DEFAULT_CURRENCY:-XTR}"
 
-echo "== Installing system packages =="
+echo "== Установка системных пакетов =="
 sudo apt update
 sudo apt install -y python3 python3-venv python3-pip git
 
 if [ -d "$APP_DIR/.git" ]; then
-  echo "== Repo exists, pulling latest =="
+  echo "== Репозиторий уже есть, обновляю =="
   sudo git -C "$APP_DIR" pull
 else
-  echo "== Cloning repo =="
+  echo "== Клонирую репозиторий =="
   sudo mkdir -p "$APP_DIR"
   sudo git clone "$REPO_URL" "$APP_DIR"
 fi
 
-echo "== Setting up virtualenv =="
+echo "== Создание виртуального окружения =="
 sudo python3 -m venv "$APP_DIR/.venv"
 sudo "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirements.txt"
 
-echo "== Writing .env =="
+echo "== Запись .env =="
 sudo tee "$APP_DIR/.env" > /dev/null <<EOF
 BOT_TOKEN=${BOT_TOKEN}
 XUI_BASE_URL=${XUI_BASE_URL}
@@ -78,7 +78,7 @@ ADMIN_WEB_PASSWORD=${ADMIN_WEB_PASSWORD}
 ADMIN_WEB_SECRET=${ADMIN_WEB_SECRET}
 EOF
 
-echo "== Creating systemd services =="
+echo "== Создание systemd сервисов =="
 sudo tee /etc/systemd/system/xui-bot.service > /dev/null <<EOF
 [Unit]
 Description=XUI Telegram Bot
@@ -117,7 +117,7 @@ WantedBy=multi-user.target
 EOF
 fi
 
-echo "== Enabling services =="
+echo "== Включение сервисов =="
 sudo systemctl daemon-reload
 if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
   sudo systemctl enable xui-bot xui-admin
@@ -127,9 +127,9 @@ else
   sudo systemctl restart xui-bot
 fi
 
-echo "== Done =="
-echo "Bot:    sudo systemctl status xui-bot"
+echo "== Готово =="
+echo "Бот:    sudo systemctl status xui-bot"
 if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
-  echo "Admin:  sudo systemctl status xui-admin"
+  echo "Админ:  sudo systemctl status xui-admin"
 fi
 echo "Logs:   sudo journalctl -u xui-bot -f"
