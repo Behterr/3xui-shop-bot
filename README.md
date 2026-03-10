@@ -72,15 +72,6 @@ https://github.com/Behterr/3xui-shopbot.git
 Тарифы хранятся в `config/plans.json`.
 Важно: `inboundId` должен совпадать с inbound ID в 3X‑UI.
 
-## Админ‑панель (локально)
-
-Запуск:
-```
-python -m uvicorn src.admin_web:app --host 127.0.0.1 --port 8000
-```
-
-Открыть: `http://127.0.0.1:8000`
-
 ## systemd сервис (Ubuntu)
 
 ### Бот
@@ -152,4 +143,3 @@ sudo systemctl restart xui-bot xui-admin
 ## Примечания по оплате Telegram Stars
 
 Оплата Stars использует валюту `XTR`. Цены в тарифах и баланс считаются в XTR.
-
