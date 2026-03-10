@@ -38,9 +38,31 @@ else
 fi
 
 
-echo "== Установка системных пакетов =="
-sudo apt update
-sudo apt install -y python3 python3-venv python3-pip git
+echo "== Проверка системных пакетов =="
+PACKAGES=(python3 python3-venv python3-pip git)
+MISSING=()
+for pkg in "${PACKAGES[@]}"; do
+  if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+    MISSING+=("$pkg")
+  fi
+done
+
+UPGRADABLE=()
+if command -v apt >/dev/null 2>&1; then
+  for pkg in "${PACKAGES[@]}"; do
+    if apt list --upgradable 2>/dev/null | awk -F/ '{print $1}' | grep -qx "$pkg"; then
+      UPGRADABLE+=("$pkg")
+    fi
+  done
+fi
+
+if [ ${#MISSING[@]} -eq 0 ] && [ ${#UPGRADABLE[@]} -eq 0 ]; then
+  echo "Все необходимые пакеты уже установлены и обновлены."
+else
+  echo "== Установка/обновление пакетов =="
+  sudo apt update
+  sudo apt install -y "${PACKAGES[@]}"
+fi
 
 if [ -d "$APP_DIR/.git" ]; then
   echo "== Репозиторий уже есть, обновляю =="
