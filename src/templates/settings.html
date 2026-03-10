@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">Настройки</div>
+<div class="card">
+  <div class="card-header">Настройки (.env)</div>
+  <div class="card-body">
+    <form method="post" action="/settings" class="row g-3">
+      {% for key, value in env.items() %}
+        {% set meta = meta_map.get(key) %}
+        <div class="col-md-6">
+          <label class="form-label">
+            {{ meta.label if meta else key }}
+            <span class="ms-1 badge bg-secondary help-tip" data-tip="{{ meta.help if meta else 'Описание отсутствует' }}">?</span>
+          </label>
+          <input class="form-control" name="{{ key }}" value="{{ value }}" />
+        </div>
+      {% endfor %}
+      <div class="col-12">
+        <button class="btn btn-primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

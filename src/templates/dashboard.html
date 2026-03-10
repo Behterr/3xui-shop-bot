@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">Обзор</div>
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="card-title text-muted">Пользователей</div>
+        <div class="fs-2 fw-semibold">{{ counts.users }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="card-title text-muted">Подписок</div>
+        <div class="fs-2 fw-semibold">{{ counts.subscriptions }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="card-title text-muted">Заказов</div>
+        <div class="fs-2 fw-semibold">{{ counts.orders }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">Активность</div>
+      <div class="card-body">
+        <div class="mb-3">Клиенты в панели</div>
+        <div class="progress mb-3" role="progressbar">
+          <div class="progress-bar bg-primary" style="width: 70%"></div>
+        </div>
+        <div class="text-muted small">Сравнение условное, для визуального индикатора.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">В панели</div>
+      <div class="card-body d-flex align-items-center justify-content-between">
+        <div class="fs-5">Клиенты</div>
+        <span class="badge bg-primary fs-6">{{ panel_client_count }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

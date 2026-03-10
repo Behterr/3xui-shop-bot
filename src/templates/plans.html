@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">Тарифы</div>
+<div class="card mb-4">
+  <div class="card-header">Тарифы</div>
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <input id="plansSearch" class="form-control form-control-sm search-input" placeholder="Поиск по тарифам..." />
+      <span class="text-muted small">Всего: {{ plans | length }}</span>
+    </div>
+    <div class="table-responsive">
+      <table id="plansTable" class="table align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Цена</th>
+            <th>Дней</th>
+            <th>GB</th>
+            <th>IP</th>
+            <th>Inbound</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in plans %}
+          <tr>
+            <td>{{ p.id }}</td>
+            <td>{{ p.title }}</td>
+            <td>{{ p.price }} {{ p.currency }}</td>
+            <td>{{ p.expiryDays }}</td>
+            <td>{{ p.totalGB }}</td>
+            <td>{{ p.limitIp }}</td>
+            <td>{{ p.inboundId }}</td>
+            <td>
+              <form method="post" action="/plans/{{ p.id }}/delete">
+                <button class="btn btn-outline-danger btn-sm" type="submit">Удалить</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Добавить тариф</div>
+  <div class="card-body">
+    <form method="post" action="/plans" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Название</label>
+        <input class="form-control" name="title" required />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Цена</label>
+        <input class="form-control" name="price" type="number" required />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Валюта</label>
+        <input class="form-control" name="currency" value="RUB" />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Срок (дней)</label>
+        <input class="form-control" name="expiry_days" type="number" required />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Лимит GB</label>
+        <input class="form-control" name="total_gb" type="number" value="0" />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Лимит IP</label>
+        <input class="form-control" name="limit_ip" type="number" value="0" />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Inbound ID</label>
+        <input class="form-control" name="inbound_id" type="number" required />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Flow</label>
+        <input class="form-control" name="flow" />
+      </div>
+      <div class="col-12">
+        <button class="btn btn-primary" type="submit">Добавить</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  attachSearch("plansSearch", "plansTable");
+</script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">Промокоды</div>
+<div class="card mb-4">
+  <div class="card-header">Список промокодов</div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>Код</th>
+            <th>%</th>
+            <th>Сумма</th>
+            <th>Лимит</th>
+            <th>Использовано</th>
+            <th>Истекает</th>
+            <th>Активен</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in promos %}
+          <tr>
+            <td>{{ p[0] }}</td>
+            <td>{{ p[1] }}</td>
+            <td>{{ p[2] }}</td>
+            <td>{{ p[3] }}</td>
+            <td>{{ p[4] }}</td>
+            <td>{{ p[5] or '-' }}</td>
+            <td>
+              {% if p[6] == 1 %}
+                <span class="badge bg-success">Да</span>
+              {% else %}
+                <span class="badge bg-secondary">Нет</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" action="/promos/{{ p[0] }}/delete">
+                <button class="btn btn-outline-danger btn-sm" type="submit">Удалить</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Добавить промокод</div>
+  <div class="card-body">
+    <form method="post" action="/promos" class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Код</label>
+        <input class="form-control" name="code" required />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Скидка %</label>
+        <input class="form-control" name="discount_percent" type="number" value="0" />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Скидка сумма</label>
+        <input class="form-control" name="discount_amount" type="number" value="0" />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Лимит</label>
+        <input class="form-control" name="usage_limit" type="number" value="0" />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Истекает (ISO)</label>
+        <input class="form-control" name="expires_at" placeholder="2026-12-31T00:00:00" />
+      </div>
+      <div class="col-md-1">
+        <label class="form-label">Активен</label>
+        <input class="form-control" name="active" type="number" value="1" />
+      </div>
+      <div class="col-12">
+        <button class="btn btn-primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">Контент</div>
+<div class="card">
+  <div class="card-header">Тексты и баннеры</div>
+  <div class="card-body">
+    <form method="post" action="/content" class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Заголовок меню</label>
+        <input class="form-control" name="menu_header_text" value="{{ cfg.get('menu_header_text','Главное меню') }}" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Текст баннера</label>
+        <input class="form-control" name="menu_banner_text" value="{{ cfg.get('menu_banner_text','') }}" />
+      </div>
+      <div class="col-12">
+        <button class="btn btn-primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

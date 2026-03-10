@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">Подписки</div>
+<div class="card">
+  <div class="card-header">Подписки</div>
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <input id="subsSearch" class="form-control form-control-sm search-input" placeholder="Поиск по подпискам..." />
+      <span class="text-muted small">Всего: {{ subs | length }}</span>
+    </div>
+    <div class="table-responsive">
+      <table id="subsTable" class="table align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>User ID</th>
+            <th>Plan</th>
+            <th>Email</th>
+            <th>UUID</th>
+            <th>До</th>
+            <th>В панели</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in subs %}
+          <tr>
+            <td>{{ s[0] }}</td>
+            <td>{{ s[1] }}</td>
+            <td>{{ s[2] }}</td>
+            <td>{{ s[4] }}</td>
+            <td>{{ s[5] }}</td>
+            <td>{{ s[6] }}</td>
+            <td>
+              {% if s[4] in panel_emails or s[5] in panel_ids %}
+                <span class="badge bg-success">Да</span>
+              {% else %}
+                <span class="badge bg-danger">Нет</span>
+              {% endif %}
+            </td>
+            <td class="d-flex flex-wrap gap-1">
+              <form method="post" action="/subscriptions/{{ s[0] }}/extend" class="d-flex gap-1">
+                <input class="form-control form-control-sm" name="days" type="number" value="30" style="width: 80px;" />
+                <button class="btn btn-outline-primary btn-sm" type="submit">Продлить</button>
+              </form>
+              <form method="post" action="/subscriptions/{{ s[0] }}/disable">
+                <button class="btn btn-outline-warning btn-sm" type="submit">Отключить</button>
+              </form>
+              <form method="post" action="/subscriptions/{{ s[0] }}/delete">
+                <button class="btn btn-outline-danger btn-sm" type="submit">Удалить</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">Выдать подписку вручную</div>
+  <div class="card-body">
+    <form method="post" action="/subscriptions/create" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">User ID</label>
+        <input class="form-control" name="user_id" type="number" required />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Plan ID</label>
+        <input class="form-control" name="plan_id" required />
+      </div>
+      <div class="col-12">
+        <button class="btn btn-primary" type="submit">Выдать</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  attachSearch("subsSearch", "subsTable");
+</script>
+{% endblock %}

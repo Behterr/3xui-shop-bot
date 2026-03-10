@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">Редактор пользователя</div>
+<div class="card mb-4">
+  <div class="card-header">Профиль</div>
+  <div class="card-body">
+    {% if user %}
+    <form method="post" action="/users/{{ user[0] }}/update" class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">ID</label>
+        <input class="form-control" value="{{ user[0] }}" readonly />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">TG ID</label>
+        <input class="form-control" value="{{ user[1] }}" readonly />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Ref code</label>
+        <input class="form-control" value="{{ user[5] or '' }}" readonly />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Referrer ID</label>
+        <input class="form-control" value="{{ user[6] or '' }}" readonly />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Username</label>
+        <input class="form-control" name="username" value="{{ user[2] or '' }}" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Имя</label>
+        <input class="form-control" name="first_name" value="{{ user[3] or '' }}" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Баланс</label>
+        <input class="form-control" name="balance" type="number" value="{{ user[4] or 0 }}" />
+      </div>
+      <div class="col-12">
+        <button class="btn btn-primary" type="submit">Сохранить</button>
+        <a class="btn btn-outline-secondary" href="/users">Назад</a>
+      </div>
+    </form>
+    {% else %}
+      <div class="text-muted">Пользователь не найден.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Подписки пользователя</div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Plan</th>
+            <th>Email</th>
+            <th>UUID</th>
+            <th>До</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in subs %}
+          <tr>
+            <td>{{ s[0] }}</td>
+            <td>{{ s[1] }}</td>
+            <td>{{ s[2] }}</td>
+            <td>{{ s[3] }}</td>
+            <td>{{ s[4] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

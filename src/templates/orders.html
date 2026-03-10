@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">Заказы</div>
+<div class="card">
+  <div class="card-header">Заказы</div>
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <input id="ordersSearch" class="form-control form-control-sm search-input" placeholder="Поиск по заказам..." />
+      <span class="text-muted small">Всего: {{ orders | length }}</span>
+    </div>
+    <div class="table-responsive">
+      <table id="ordersTable" class="table align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>User ID</th>
+            <th>Plan</th>
+            <th>Status</th>
+            <th>Дата</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td>{{ o[0] }}</td>
+            <td>{{ o[1] }}</td>
+            <td>{{ o[2] }}</td>
+            <td>{{ o[3] }}</td>
+            <td>{{ o[4] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+  attachSearch("ordersSearch", "ordersTable");
+</script>
+{% endblock %}

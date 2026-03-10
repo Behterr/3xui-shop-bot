@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">Рассылка</div>
+<div class="card mb-4">
+  <div class="card-header">Отправить сообщение всем</div>
+  <div class="card-body">
+    <form method="post" action="/broadcast" class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Текст рассылки</label>
+        <textarea class="form-control" name="message" rows="4" required></textarea>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Фильтр</label>
+        <select class="form-select" name="filter_mode">
+          <option value="all">Все пользователи</option>
+          <option value="with_subs">Только с подпиской</option>
+          <option value="without_subs">Только без подписки</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Мин. баланс</label>
+        <input class="form-control" type="number" name="min_balance" value="0" />
+      </div>
+      <div class="col-12">
+        <button class="btn btn-primary" type="submit">Отправить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">История рассылок</div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Сообщение</th>
+            <th>Дата</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in items %}
+          <tr>
+            <td>{{ b[0] }}</td>
+            <td>{{ b[1] }}</td>
+            <td>{{ b[2] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
