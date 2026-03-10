@@ -1,61 +1,91 @@
-# 3X-UI Telegram Bot (Python MVP)
+# 3X-UI ShopBot (Telegram)
 
-Этот бот продает подписки: создает клиентов в вашей 3X-UI панели через API и сохраняет все действия в SQLite.
+Телеграм‑бот для продаж подписок из 3X‑UI с админ‑панелью. Поддерживает баланс, оплату Telegram Stars (XTR), промокоды, рефералку, рассылки и управление подписками.
 
 ## Репозиторий
 
 https://github.com/Behterr/3xui-shopbot.git
 
-## Установка
+## Возможности
 
-1. Создайте виртуальное окружение и установите зависимости:
-   python -m venv .venv
-   .\.venv\Scripts\activate
-   pip install -r requirements.txt
+- Покупка подписки из 3X‑UI через API
+- Баланс пользователя и пополнение через Telegram Stars (XTR)
+- Промокоды и скидки
+- Реферальные ссылки
+- Админ‑панель: тарифы, пользователи, подписки, рассылки, контент
+- Ручная выдача подписок и управление ими (продлить/отключить/удалить)
 
-2. Скопируйте `.env.example` в `.env` и заполните значения:
-   - `BOT_TOKEN` из BotFather
-   - `XUI_BASE_URL` например `https://panel.example.com:54321`
-   - `XUI_WEB_BASE_PATH`, если панель на нестандартном пути (например, `/xui`)
-   - `XUI_USERNAME` / `XUI_PASSWORD`
-   - `XUI_INSECURE=true`, если используется самоподписанный TLS
-   - `SUBSCRIPTION_BASE_URL` базовый URI подписки (например, `https://srv1.palachsrv.mooo.com/m8eYzJF/`)
-   - `SUPPORT_USERNAME` (например, `my_support`) или `SUPPORT_TG_ID` для кнопки “Поддержка”
-   - `BOT_USERNAME` для реферальной ссылки (без @)
+## Быстрый старт (Ubuntu VPS)
 
-3. Отредактируйте тарифы в `config/plans.json`.
-   - `inboundId` должен совпадать с вашим inbound ID в 3X-UI.
-   - `subscriptionUrlTemplate` опционален и может использовать `{email}` или `{uuid}`.
-
-4. Запуск бота:
-   python src/main.py
-
-## Установка на VPS (Ubuntu)
-
-1. Обновите пакеты и установите Python:
+1. Установить зависимости:
+   ```
    sudo apt update
-   sudo apt install -y python3 python3-venv python3-pip
+   sudo apt install -y python3 python3-venv python3-pip git
+   ```
 
-2. Клонируйте репозиторий и перейдите в папку:
+2. Клонировать проект:
+   ```
    git clone https://github.com/Behterr/3xui-shopbot.git
    cd 3xui-shopbot
+   ```
 
-3. Создайте виртуальное окружение и установите зависимости:
+3. Установить Python зависимости:
+   ```
    python3 -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
+   ```
 
-4. Создайте `.env` на основе `.env.example` и заполните значения:
+4. Настроить `.env`:
+   ```
    cp .env.example .env
    nano .env
+   ```
 
-5. Запуск бота:
+5. Запустить бота:
+   ```
    python src/main.py
+   ```
+
+## Настройка .env
+
+Обязательные:
+- `BOT_TOKEN` — токен BotFather
+- `XUI_BASE_URL` — URL панели 3X‑UI (например, `https://panel.example.com:54321`)
+- `XUI_USERNAME` / `XUI_PASSWORD`
+
+Опциональные:
+- `XUI_WEB_BASE_PATH` — путь панели (например, `/xui`)
+- `XUI_INSECURE=true` — если самоподписанный TLS
+- `SUBSCRIPTION_BASE_URL` — базовый URI подписки за прокси (например, `https://srv1.example.com/abc/`)
+- `SUPPORT_USERNAME` или `SUPPORT_TG_ID` — кнопка “Поддержка”
+- `BOT_USERNAME` — юзернейм бота для рефералки
+- `DEFAULT_CURRENCY` — валюта (для Stars используйте `XTR`)
+
+Админ‑панель:
+- `ADMIN_WEB_USER`
+- `ADMIN_WEB_PASSWORD`
+- `ADMIN_WEB_SECRET`
+
+## Тарифы
+
+Тарифы хранятся в `config/plans.json`.
+Важно: `inboundId` должен совпадать с inbound ID в 3X‑UI.
+
+## Админ‑панель (локально)
+
+Запуск:
+```
+python -m uvicorn src.admin_web:app --host 127.0.0.1 --port 8000
+```
+
+Открыть: `http://127.0.0.1:8000`
 
 ## systemd сервис (Ubuntu)
 
-Создайте файл `/etc/systemd/system/xui-bot.service`:
+### Бот
 
+`/etc/systemd/system/xui-bot.service`
 ```
 [Unit]
 Description=XUI Telegram Bot
@@ -74,48 +104,52 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-Дальше включите сервис:
+### Админ‑панель
+
+`/etc/systemd/system/xui-admin.service`
+```
+[Unit]
+Description=XUI Admin Panel
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/3xui-shopbot
+EnvironmentFile=/home/ubuntu/3xui-shopbot/.env
+ExecStart=/home/ubuntu/3xui-shopbot/.venv/bin/python -m uvicorn src.admin_web:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Запуск:
 ```
 sudo systemctl daemon-reload
-sudo systemctl enable xui-bot
-sudo systemctl start xui-bot
-sudo systemctl status xui-bot
+sudo systemctl enable xui-bot xui-admin
+sudo systemctl start xui-bot xui-admin
+sudo systemctl status xui-bot xui-admin
 ```
 
-Для логов:
+Логи:
 ```
 sudo journalctl -u xui-bot -f
+sudo journalctl -u xui-admin -f
 ```
 
-## Админ‑панель (локально)
+## Обновление на VPS
 
-1. Установите зависимости:
-   pip install -r requirements.txt
+```
+cd /home/ubuntu/3xui-shopbot
+git pull
+source .venv/bin/activate
+pip install -r requirements.txt
+sudo systemctl restart xui-bot xui-admin
+```
 
-2. В `.env` добавьте:
-   - `ADMIN_WEB_USER` (логин)
-   - `ADMIN_WEB_PASSWORD` (пароль)
-   - `ADMIN_WEB_SECRET` (любая строка для сессий)
+## Примечания по оплате Telegram Stars
 
-3. Запуск админки:
-   python -m uvicorn src.admin_web:app --host 127.0.0.1 --port 8000
+Оплата Stars использует валюту `XTR`. Цены в тарифах и баланс считаются в XTR.
 
-Откройте http://127.0.0.1:8000 и войдите в панель.
-
-## Хранение данных
-
-SQLite база хранится в `data/bot.db`.
-Таблицы: users, orders, subscriptions.
-
-## Команды
-
-- `/start` или `/plans` — показать тарифы
-- `/status` — показать ваши подписки
-
-## Примечания
-
-Бот создает клиента в 3X-UI и отправляет детали подписки. Для пополнения баланса используется Telegram Stars (XTR).
-
-## Оплата Telegram Stars
-
-Для пополнения баланса используются Telegram Stars (валюта `XTR`). Задайте цены тарифов в XTR.
