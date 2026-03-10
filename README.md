@@ -91,64 +91,6 @@ chmod +x install.sh
 Тарифы хранятся в `config/plans.json`.
 Важно: `inboundId` должен совпадать с inbound ID в 3X‑UI.
 
-## systemd сервис (Ubuntu)
-
-### Бот
-
-`/etc/systemd/system/xui-bot.service`
-```
-[Unit]
-Description=XUI Telegram Bot
-After=network.target
-
-[Service]
-Type=simple
-User=ubuntu
-WorkingDirectory=/home/ubuntu/3xui-shopbot
-EnvironmentFile=/home/ubuntu/3xui-shopbot/.env
-ExecStart=/home/ubuntu/3xui-shopbot/.venv/bin/python /home/ubuntu/3xui-shopbot/src/main.py
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### Админ‑панель
-
-`/etc/systemd/system/xui-admin.service`
-```
-[Unit]
-Description=XUI Admin Panel
-After=network.target
-
-[Service]
-Type=simple
-User=ubuntu
-WorkingDirectory=/home/ubuntu/3xui-shopbot
-EnvironmentFile=/home/ubuntu/3xui-shopbot/.env
-ExecStart=/home/ubuntu/3xui-shopbot/.venv/bin/python -m uvicorn src.admin_web:app --host 0.0.0.0 --port 8000
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Запуск:
-```
-sudo systemctl daemon-reload
-sudo systemctl enable xui-bot xui-admin
-sudo systemctl start xui-bot xui-admin
-sudo systemctl status xui-bot xui-admin
-```
-
-Логи:
-```
-sudo journalctl -u xui-bot -f
-sudo journalctl -u xui-admin -f
-```
-
 ## Обновление на VPS
 
 ```
