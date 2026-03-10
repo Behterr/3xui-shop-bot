@@ -6,8 +6,7 @@ REPO_URL="https://github.com/Behterr/3xui-shopbot.git"
 
 echo "== Установщик 3X-UI ShopBot (Ubuntu) =="
 
-read -r -p "Папка установки [/opt/3xui-shopbot]: " input_dir
-APP_DIR="${input_dir:-$APP_DIR}"
+echo "Папка установки: ${APP_DIR}"
 
 read -r -p "URL репозитория Git [${REPO_URL}]: " input_repo
 REPO_URL="${input_repo:-$REPO_URL}"
