@@ -26,7 +26,8 @@ def init_db():
           referrer_id INTEGER,
           state TEXT,
           state_data TEXT,
-          active_promo_code TEXT
+          active_promo_code TEXT,
+          blocked INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS orders (
@@ -111,6 +112,7 @@ def init_db():
         "ALTER TABLE users ADD COLUMN state TEXT;",
         "ALTER TABLE users ADD COLUMN state_data TEXT;",
         "ALTER TABLE users ADD COLUMN active_promo_code TEXT;",
+        "ALTER TABLE users ADD COLUMN blocked INTEGER DEFAULT 0;",
     ]:
         try:
             conn.execute(stmt)
@@ -141,6 +143,11 @@ def upsert_user(conn, tg_user):
 def get_user_by_tg_id(conn, tg_id):
     cur = conn.execute("SELECT * FROM users WHERE tg_id = ?", (tg_id,))
     return cur.fetchone()
+
+
+def set_user_blocked(conn, user_id, blocked):
+    conn.execute("UPDATE users SET blocked = ? WHERE id = ?", (1 if blocked else 0, user_id))
+    conn.commit()
 
 
 def set_last_message_id(conn, user_id, message_id):
@@ -286,6 +293,35 @@ def get_user_subscriptions(conn, user_id):
 def list_users_basic(conn):
     cur = conn.execute("SELECT id, tg_id, username, first_name, balance FROM users ORDER BY id DESC")
     return cur.fetchall()
+
+
+def list_users_admin(conn, limit=20):
+    cur = conn.execute(
+        "SELECT id, tg_id, username, first_name, balance, created_at FROM users ORDER BY id DESC LIMIT ?",
+        (limit,),
+    )
+    return cur.fetchall()
+
+def list_users_admin_page(conn, limit=20, offset=0):
+    cur = conn.execute(
+        "SELECT id, tg_id, username, first_name, balance, created_at FROM users ORDER BY id DESC LIMIT ? OFFSET ?",
+        (limit, offset),
+    )
+    return cur.fetchall()
+
+def get_user_by_id(conn, user_id):
+    cur = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    return cur.fetchone()
+
+def get_user_count(conn):
+    cur = conn.execute("SELECT COUNT(*) FROM users")
+    return cur.fetchone()[0]
+
+
+def list_tg_ids(conn):
+    cur = conn.execute("SELECT tg_id FROM users")
+    rows = cur.fetchall()
+    return [r[0] for r in rows]
 
 
 def get_subscription_by_id(conn, sub_id):

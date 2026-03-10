@@ -41,7 +41,15 @@ from db import (
     has_redeemed_promo,
     redeem_promo,
     get_config,
+    list_users_admin,
+    list_users_admin_page,
+    get_user_by_id,
+    get_user_count,
+    set_user_blocked,
+    list_tg_ids,
+    create_broadcast,
 )
+from admin_store import load_plans, save_plans
 from three_xui import ThreeXuiClient
 
 load_dotenv()
@@ -66,8 +74,12 @@ if not BOT_TOKEN:
 if not XUI_BASE_URL or not XUI_USERNAME or not XUI_PASSWORD:
     raise RuntimeError("XUI_BASE_URL, XUI_USERNAME, XUI_PASSWORD are required")
 
-with open("config/plans.json", "r", encoding="utf-8") as f:
-    PLANS = json.load(f)
+PLANS = load_plans()
+
+
+def _reload_plans():
+    global PLANS
+    PLANS = load_plans()
 
 DB = init_db()
 
@@ -86,8 +98,49 @@ def _format_plan(plan):
     parts = [plan.get("title"), price_line, period_line]
     return " | ".join([p for p in parts if p])
 
+def _gb_to_bytes(gb_value):
+    try:
+        gb = int(gb_value)
+    except Exception:
+        return 0
+    if gb <= 0:
+        return 0
+    return gb * 1024 * 1024 * 1024
 
-def _main_menu():
+def _bytes_to_gb(value):
+    try:
+        b = int(value)
+    except Exception:
+        return 0
+    if b <= 0:
+        return 0
+    return int(b / (1024 * 1024 * 1024))
+
+def _slugify(text):
+    text = (text or "").lower()
+    text = re.sub(r"[^a-z0-9]+", "_", text)
+    return text.strip("_") or "plan"
+
+def _unique_plan_id(base):
+    candidate = base
+    counter = 2
+    ids = {p["id"] for p in PLANS}
+    while candidate in ids:
+        candidate = f"{base}_{counter}"
+        counter += 1
+    return candidate
+
+def _parse_state_data(user):
+    raw = user[10] if len(user) > 10 else None
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {}
+
+
+def _main_menu(is_admin=False):
     buttons = [
         [InlineKeyboardButton("Купить подписку", callback_data="menu:plans")],
         [
@@ -99,6 +152,8 @@ def _main_menu():
             InlineKeyboardButton("Рефералка", callback_data="menu:ref"),
         ],
     ]
+    if is_admin:
+        buttons.append([InlineKeyboardButton("Админ", callback_data="menu:admin")])
     support_url = None
     if SUPPORT_USERNAME:
         support_url = f"https://t.me/{SUPPORT_USERNAME}"
@@ -120,12 +175,22 @@ def _plans_menu():
 def _back_menu():
     return InlineKeyboardMarkup([[InlineKeyboardButton("Назад", callback_data="menu:back")]])
 
+def _admin_back_menu():
+    return InlineKeyboardMarkup([[InlineKeyboardButton("Назад", callback_data="menu:admin")]])
+
 
 def _build_sub_url(base_url, sub_id):
     if not base_url:
         return None
     base = base_url if base_url.endswith("/") else f"{base_url}/"
     return f"{base}{sub_id}"
+
+
+def _is_admin(update: Update):
+    return ADMIN_TG_ID and str(update.effective_user.id) == str(ADMIN_TG_ID)
+
+def _is_blocked(user):
+    return len(user) > 12 and user[12] == 1
 
 
 def _format_price(value):
@@ -146,6 +211,9 @@ def _calc_discounted_price(price, promo):
 async def _show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, user=None):
     if user is None:
         user = _ensure_user(update)
+    if _is_blocked(user) and not _is_admin(update):
+        await _send_or_edit(update, context, "Ваш доступ ограничен. Обратитесь в поддержку.")
+        return
     subs = get_user_subscriptions(DB, user[0])
     panel_emails, panel_ids = _load_panel_clients()
     active_count = len(
@@ -162,7 +230,7 @@ async def _show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, us
     )
     if banner:
         text = f"{banner}\n\n{text}"
-    await _send_or_edit(update, context, text, reply_markup=_main_menu())
+    await _send_or_edit(update, context, text, reply_markup=_main_menu(is_admin=_is_admin(update)))
 
 
 def _ensure_user(update: Update):
@@ -202,6 +270,9 @@ async def _send_or_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, text
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = _ensure_user(update)
+    if _is_blocked(user) and not _is_admin(update):
+        await _send_or_edit(update, context, "Ваш доступ ограничен. Обратитесь в поддержку.")
+        return
     if context.args:
         ref = context.args[0]
         if ref.startswith("ref_"):
@@ -216,7 +287,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    _ensure_user(update)
+    user = _ensure_user(update)
+    if _is_blocked(user) and not _is_admin(update):
+        await _send_or_edit(update, context, "Ваш доступ ограничен. Обратитесь в поддержку.")
+        return
     await _send_or_edit(
         update,
         context,
@@ -256,6 +330,9 @@ def _load_panel_clients():
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = _ensure_user(update)
+    if _is_blocked(user) and not _is_admin(update):
+        await _send_or_edit(update, context, "Ваш доступ ограничен. Обратитесь в поддержку.")
+        return
     subs = get_user_subscriptions(DB, user[0])
     panel_emails, panel_ids = _load_panel_clients()
     subs = [
@@ -293,6 +370,9 @@ async def my_subscriptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = _ensure_user(update)
+    if _is_blocked(user) and not _is_admin(update):
+        await _send_or_edit(update, context, "Ваш доступ ограничен. Обратитесь в поддержку.")
+        return
     balance = get_balance(DB, user[0])
     buttons = [
         [InlineKeyboardButton(f"Пополнить {amt} XTR", callback_data=f"topup:{amt}")]
@@ -305,11 +385,117 @@ async def show_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_referral(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = _ensure_user(update)
+    if _is_blocked(user) and not _is_admin(update):
+        await _send_or_edit(update, context, "Ваш доступ ограничен. Обратитесь в поддержку.")
+        return
     ref_code = user[7]
     bot_username = BOT_USERNAME or (context.bot.username if context and context.bot else "")
     link = f"https://t.me/{bot_username}?start=ref_{ref_code}" if bot_username else f"ref_{ref_code}"
     text = f"Реферальная ссылка:\n{link}"
     await _send_or_edit(update, context, text, reply_markup=_back_menu())
+
+
+async def show_admin_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _is_admin(update):
+        await _send_or_edit(update, context, "Нет доступа.", reply_markup=_back_menu())
+        return
+    buttons = [
+        [InlineKeyboardButton("Рассылка", callback_data="admin:broadcast")],
+        [InlineKeyboardButton("Пользователи", callback_data="admin:users")],
+        [InlineKeyboardButton("Тарифы", callback_data="admin:plans")],
+        [InlineKeyboardButton("Назад", callback_data="menu:back")],
+    ]
+    await _send_or_edit(update, context, "Админ‑меню", reply_markup=InlineKeyboardMarkup(buttons))
+
+
+async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _is_admin(update):
+        return
+    await admin_users_page(update, context, 0)
+
+
+async def admin_users_page(update: Update, context: ContextTypes.DEFAULT_TYPE, page: int):
+    if not _is_admin(update):
+        return
+    per_page = 10
+    offset = page * per_page
+    users = list_users_admin_page(DB, limit=per_page, offset=offset)
+    total = get_user_count(DB)
+    buttons = []
+    row = []
+    for u in users:
+        label = f"{u[0]} | @{u[2] or 'user'}"
+        row.append(InlineKeyboardButton(label, callback_data=f"admin:user:{u[0]}:{page}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton("Назад", callback_data=f"admin:users:page:{page - 1}"))
+    if offset + per_page < total:
+        nav.append(InlineKeyboardButton("Вперед", callback_data=f"admin:users:page:{page + 1}"))
+    if nav:
+        buttons.append(nav)
+    buttons.append([InlineKeyboardButton("В меню", callback_data="menu:admin")])
+    await _send_or_edit(
+        update,
+        context,
+        f"Пользователи: {total}. Страница {page + 1}.",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+
+
+async def admin_user_detail(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, page: int):
+    if not _is_admin(update):
+        return
+    target = get_user_by_id(DB, user_id)
+    if not target:
+        await _send_or_edit(update, context, "Пользователь не найден.", reply_markup=_admin_back_menu())
+        return
+    text = (
+        "Пользователь:\n"
+        f"ID: {target[0]}\n"
+        f"TG ID: {target[1]}\n"
+        f"Username: @{target[2] or '-'}\n"
+        f"Имя: {target[3] or '-'}\n"
+        f"Баланс: {target[6] or 0} {DEFAULT_CURRENCY}\n"
+        f"Статус: {'Заблокирован' if _is_blocked(target) else 'Активен'}"
+    )
+    buttons = [
+        [
+            InlineKeyboardButton("+100", callback_data=f"admin:user:add:{user_id}:100:{page}"),
+            InlineKeyboardButton("+500", callback_data=f"admin:user:add:{user_id}:500:{page}"),
+        ],
+        [
+            InlineKeyboardButton("-100", callback_data=f"admin:user:sub:{user_id}:100:{page}"),
+            InlineKeyboardButton("-500", callback_data=f"admin:user:sub:{user_id}:500:{page}"),
+        ],
+        [InlineKeyboardButton("Задать баланс", callback_data=f"admin:user:set:{user_id}:{page}")],
+        [
+            InlineKeyboardButton(
+                "Разблокировать" if _is_blocked(target) else "Заблокировать",
+                callback_data=f"admin:user:toggle:{user_id}:{page}",
+            )
+        ],
+        [InlineKeyboardButton("К списку", callback_data=f"admin:users:page:{page}")],
+    ]
+    await _send_or_edit(update, context, text, reply_markup=InlineKeyboardMarkup(buttons))
+
+
+async def admin_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _is_admin(update):
+        return
+    buttons = []
+    for p in PLANS:
+        buttons.append([
+            InlineKeyboardButton(f"Изменить {p['id']}", callback_data=f"admin:plan:edit:{p['id']}"),
+            InlineKeyboardButton("Удалить", callback_data=f"admin:plan:del:{p['id']}"),
+        ])
+    buttons.append([InlineKeyboardButton("Добавить тариф", callback_data="admin:plan:add")])
+    buttons.append([InlineKeyboardButton("Назад", callback_data="menu:admin")])
+    await _send_or_edit(update, context, "Тарифы (админ)", reply_markup=InlineKeyboardMarkup(buttons))
 
 
 async def ask_promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -326,6 +512,212 @@ async def ask_promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = _ensure_user(update)
     state = user[9] if len(user) > 9 else None
+    if _is_blocked(user) and not _is_admin(update):
+        await _send_or_edit(update, context, "Ваш доступ ограничен. Обратитесь в поддержку.")
+        return
+    if state == "admin_broadcast" and _is_admin(update):
+        message = (update.message.text or "").strip()
+        clear_state(DB, user[0])
+        if not message:
+            await _send_or_edit(update, context, "Текст рассылки пуст.", reply_markup=_admin_back_menu())
+            return
+        tg_ids = list_tg_ids(DB)
+        sent = 0
+        failed = 0
+        for tg_id in tg_ids:
+            try:
+                await context.bot.send_message(chat_id=int(tg_id), text=message)
+                sent += 1
+            except Exception:
+                failed += 1
+        create_broadcast(DB, message)
+        await _send_or_edit(
+            update,
+            context,
+            f"Рассылка отправлена.\nУспешно: {sent}\nОшибки: {failed}",
+            reply_markup=_admin_back_menu(),
+        )
+        return
+
+    if state in {"admin_plan_add", "admin_plan_edit"} and _is_admin(update):
+        text = (update.message.text or "").strip()
+        state_data = _parse_state_data(user)
+        step = state_data.get("step")
+        data = state_data.get("data") or {}
+
+        if state == "admin_plan_add" and not step:
+            step = "title"
+        if state == "admin_plan_edit" and not step:
+            step = "price"
+
+        if state == "admin_plan_edit":
+            plan_id = state_data.get("plan_id")
+            plan = next((p for p in PLANS if p["id"] == plan_id), None)
+            if not plan:
+                clear_state(DB, user[0])
+                await _send_or_edit(update, context, "Тариф не найден.", reply_markup=_admin_back_menu())
+                return
+
+        if state == "admin_plan_add":
+            if step == "title":
+                if not text:
+                    await _send_or_edit(update, context, "Введите название тарифа.", reply_markup=_admin_back_menu())
+                    return
+                data["title"] = text
+                state_data = {"step": "price", "data": data}
+                set_state(DB, user[0], "admin_plan_add", json.dumps(state_data, ensure_ascii=False))
+                await _send_or_edit(update, context, "Введите цену (числом).", reply_markup=_admin_back_menu())
+                return
+            if step == "price":
+                try:
+                    price = int(text)
+                    if price < 0:
+                        raise ValueError()
+                except Exception:
+                    await _send_or_edit(update, context, "Цена должна быть числом.", reply_markup=_admin_back_menu())
+                    return
+                data["price"] = price
+                state_data["step"] = "days"
+                set_state(DB, user[0], "admin_plan_add", json.dumps(state_data, ensure_ascii=False))
+                await _send_or_edit(update, context, "Введите длительность (дней).", reply_markup=_admin_back_menu())
+                return
+            if step == "days":
+                try:
+                    days = int(text)
+                    if days <= 0:
+                        raise ValueError()
+                except Exception:
+                    await _send_or_edit(update, context, "Длительность должна быть числом больше 0.", reply_markup=_admin_back_menu())
+                    return
+                data["expiryDays"] = days
+                state_data["step"] = "limit"
+                set_state(DB, user[0], "admin_plan_add", json.dumps(state_data, ensure_ascii=False))
+                await _send_or_edit(update, context, "Введите лимит устройств (0 = без лимита).", reply_markup=_admin_back_menu())
+                return
+            if step == "limit":
+                try:
+                    limit = int(text)
+                    if limit < 0:
+                        raise ValueError()
+                except Exception:
+                    await _send_or_edit(update, context, "Лимит устройств должен быть числом.", reply_markup=_admin_back_menu())
+                    return
+                data["limitIp"] = limit
+                state_data["step"] = "gb"
+                set_state(DB, user[0], "admin_plan_add", json.dumps(state_data, ensure_ascii=False))
+                await _send_or_edit(update, context, "Введите объём (ГБ) на период (0 = без лимита).", reply_markup=_admin_back_menu())
+                return
+            if step == "gb":
+                try:
+                    gb = int(text)
+                    if gb < 0:
+                        raise ValueError()
+                except Exception:
+                    await _send_or_edit(update, context, "Объём должен быть числом.", reply_markup=_admin_back_menu())
+                    return
+                data["totalGB"] = _gb_to_bytes(gb)
+                base_id = _slugify(f"{data.get('title', 'plan')}_{data.get('expiryDays', 0)}")
+                plan_id = _unique_plan_id(base_id)
+                inbound_id = PLANS[0]["inboundId"] if PLANS else 1
+                flow = PLANS[0].get("flow", "") if PLANS else ""
+                plan = {
+                    "id": plan_id,
+                    "title": data.get("title"),
+                    "price": data.get("price", 0),
+                    "currency": DEFAULT_CURRENCY,
+                    "expiryDays": data.get("expiryDays", 30),
+                    "totalGB": data.get("totalGB", 0),
+                    "limitIp": data.get("limitIp", 0),
+                    "inboundId": inbound_id,
+                    "flow": flow,
+                }
+                PLANS.append(plan)
+                save_plans(PLANS)
+                _reload_plans()
+                clear_state(DB, user[0])
+                await _send_or_edit(update, context, "Тариф добавлен.", reply_markup=_admin_back_menu())
+                return
+
+        if state == "admin_plan_edit":
+            if step == "price":
+                if text != "-":
+                    try:
+                        price = int(text)
+                        if price < 0:
+                            raise ValueError()
+                        plan["price"] = price
+                    except Exception:
+                        await _send_or_edit(update, context, "Цена должна быть числом или '-' для пропуска.", reply_markup=_admin_back_menu())
+                        return
+                state_data["step"] = "days"
+                set_state(DB, user[0], "admin_plan_edit", json.dumps(state_data, ensure_ascii=False))
+                await _send_or_edit(update, context, f"Введите длительность в днях (сейчас {plan.get('expiryDays', 0)}) или '-' чтобы оставить.", reply_markup=_admin_back_menu())
+                return
+            if step == "days":
+                if text != "-":
+                    try:
+                        days = int(text)
+                        if days <= 0:
+                            raise ValueError()
+                        plan["expiryDays"] = days
+                    except Exception:
+                        await _send_or_edit(update, context, "Длительность должна быть числом > 0 или '-' для пропуска.", reply_markup=_admin_back_menu())
+                        return
+                state_data["step"] = "limit"
+                set_state(DB, user[0], "admin_plan_edit", json.dumps(state_data, ensure_ascii=False))
+                await _send_or_edit(update, context, f"Введите лимит устройств (сейчас {plan.get('limitIp', 0)}) или '-' чтобы оставить.", reply_markup=_admin_back_menu())
+                return
+            if step == "limit":
+                if text != "-":
+                    try:
+                        limit = int(text)
+                        if limit < 0:
+                            raise ValueError()
+                        plan["limitIp"] = limit
+                    except Exception:
+                        await _send_or_edit(update, context, "Лимит должен быть числом или '-' для пропуска.", reply_markup=_admin_back_menu())
+                        return
+                state_data["step"] = "gb"
+                set_state(DB, user[0], "admin_plan_edit", json.dumps(state_data, ensure_ascii=False))
+                current_gb = _bytes_to_gb(plan.get("totalGB", 0))
+                await _send_or_edit(update, context, f"Введите объём ГБ (сейчас {current_gb}) или '-' чтобы оставить.", reply_markup=_admin_back_menu())
+                return
+            if step == "gb":
+                if text != "-":
+                    try:
+                        gb = int(text)
+                        if gb < 0:
+                            raise ValueError()
+                        plan["totalGB"] = _gb_to_bytes(gb)
+                    except Exception:
+                        await _send_or_edit(update, context, "Объём должен быть числом или '-' для пропуска.", reply_markup=_admin_back_menu())
+                        return
+                save_plans(PLANS)
+                _reload_plans()
+                clear_state(DB, user[0])
+                await _send_or_edit(update, context, "Тариф обновлен.", reply_markup=_admin_back_menu())
+                return
+
+    if state == "admin_user_set_balance" and _is_admin(update):
+        text = (update.message.text or "").strip()
+        state_data = _parse_state_data(user)
+        user_id = state_data.get("user_id")
+        page = state_data.get("page", 0)
+        clear_state(DB, user[0])
+        try:
+            balance = int(text)
+            if balance < 0:
+                raise ValueError()
+        except Exception:
+            await _send_or_edit(update, context, "Баланс должен быть числом.", reply_markup=_admin_back_menu())
+            return
+        if user_id:
+            set_balance(DB, user_id, balance)
+            await admin_user_detail(update, context, user_id, page)
+        else:
+            await _send_or_edit(update, context, "Пользователь не найден.", reply_markup=_admin_back_menu())
+        return
+
     if state != "awaiting_promo":
         return
     code = (update.message.text or "").strip().upper()
@@ -391,8 +783,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     data = query.data or ""
+    user = _ensure_user(update)
+    if _is_blocked(user) and not _is_admin(update):
+        await _send_or_edit(update, context, "Ваш доступ ограничен. Обратитесь в поддержку.")
+        return
     if data.startswith("menu:") and data != "menu:promo":
-        user = _ensure_user(update)
         clear_state(DB, user[0])
     if data == "menu:plans":
         await _send_or_edit(update, context, "Доступные тарифы:", reply_markup=_plans_menu())
@@ -410,10 +805,123 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "menu:ref":
         await show_referral(update, context)
         return
+    if data == "menu:admin":
+        await show_admin_menu(update, context)
+        return
     if data == "menu:back":
         user = _ensure_user(update)
         clear_state(DB, user[0])
         await _show_main_menu(update, context, user)
+        return
+    if data == "admin:broadcast":
+        if not _is_admin(update):
+            await _send_or_edit(update, context, "Нет доступа.", reply_markup=_back_menu())
+            return
+        user = _ensure_user(update)
+        set_state(DB, user[0], "admin_broadcast")
+        await _send_or_edit(update, context, "Введите текст рассылки одним сообщением.", reply_markup=_admin_back_menu())
+        return
+    if data == "admin:users":
+        await admin_users(update, context)
+        return
+    if data.startswith("admin:users:page:"):
+        try:
+            page = int(data.split(":", 3)[3])
+        except Exception:
+            page = 0
+        await admin_users_page(update, context, max(page, 0))
+        return
+    if data.startswith("admin:user:add:"):
+        parts = data.split(":")
+        user_id = int(parts[3])
+        amount = int(parts[4])
+        page = int(parts[5]) if len(parts) > 5 else 0
+        target = get_user_by_id(DB, user_id)
+        if target:
+            new_balance = (target[6] or 0) + amount
+            set_balance(DB, user_id, new_balance)
+        await admin_user_detail(update, context, user_id, page)
+        return
+    if data.startswith("admin:user:sub:"):
+        parts = data.split(":")
+        user_id = int(parts[3])
+        amount = int(parts[4])
+        page = int(parts[5]) if len(parts) > 5 else 0
+        target = get_user_by_id(DB, user_id)
+        if target:
+            new_balance = (target[6] or 0) - amount
+            if new_balance < 0:
+                new_balance = 0
+            set_balance(DB, user_id, new_balance)
+        await admin_user_detail(update, context, user_id, page)
+        return
+    if data.startswith("admin:user:set:"):
+        parts = data.split(":")
+        user_id = int(parts[3])
+        page = int(parts[4]) if len(parts) > 4 else 0
+        if not _is_admin(update):
+            return
+        user = _ensure_user(update)
+        state_data = {"user_id": user_id, "page": page}
+        set_state(DB, user[0], "admin_user_set_balance", json.dumps(state_data, ensure_ascii=False))
+        await _send_or_edit(update, context, "Введите новый баланс числом.", reply_markup=_admin_back_menu())
+        return
+    if data.startswith("admin:user:toggle:"):
+        parts = data.split(":")
+        user_id = int(parts[3])
+        page = int(parts[4]) if len(parts) > 4 else 0
+        target = get_user_by_id(DB, user_id)
+        if target:
+            set_user_blocked(DB, user_id, not _is_blocked(target))
+        await admin_user_detail(update, context, user_id, page)
+        return
+    if data.startswith("admin:user:"):
+        parts = data.split(":")
+        if len(parts) >= 4:
+            user_id = int(parts[2])
+            page = int(parts[3]) if len(parts) > 3 else 0
+            await admin_user_detail(update, context, user_id, page)
+        return
+    if data == "admin:plans":
+        await admin_plans(update, context)
+        return
+    if data == "admin:plan:add":
+        if not _is_admin(update):
+            return
+        user = _ensure_user(update)
+        set_state(DB, user[0], "admin_plan_add", json.dumps({"step": "title", "data": {}}, ensure_ascii=False))
+        await _send_or_edit(update, context, "Введите название тарифа.", reply_markup=_admin_back_menu())
+        return
+    if data.startswith("admin:plan:edit:"):
+        if not _is_admin(update):
+            return
+        plan_id = data.split(":", 3)[3]
+        plan = next((p for p in PLANS if p["id"] == plan_id), None)
+        if not plan:
+            await _send_or_edit(update, context, "Тариф не найден.", reply_markup=_admin_back_menu())
+            return
+        user = _ensure_user(update)
+        state_data = {"step": "price", "plan_id": plan_id, "data": {}}
+        set_state(DB, user[0], "admin_plan_edit", json.dumps(state_data, ensure_ascii=False))
+        await _send_or_edit(
+            update,
+            context,
+            f"Изменение тарифа: {plan.get('title', plan_id)}\nВведите цену (сейчас {plan.get('price', 0)}) или '-' чтобы оставить.",
+            reply_markup=_admin_back_menu(),
+        )
+        return
+    if data.startswith("admin:plan:del:"):
+        if not _is_admin(update):
+            return
+        plan_id = data.split(":", 3)[3]
+        plan = next((p for p in PLANS if p["id"] == plan_id), None)
+        if not plan:
+            await _send_or_edit(update, context, "Тариф не найден.", reply_markup=_admin_back_menu())
+            return
+        PLANS.remove(plan)
+        save_plans(PLANS)
+        _reload_plans()
+        await _send_or_edit(update, context, "Тариф удален.", reply_markup=_admin_back_menu())
         return
 
     if data.startswith("topup:"):
