@@ -58,6 +58,12 @@ https://github.com/Behterr/3xui-shopbot.git
 bash install.sh
 ```
 
+Если файл не исполняется:
+```
+chmod +x install.sh
+./install.sh
+```
+
 Скрипт задаст вопросы (токен, домен, логин/пароль панели и т.д.), установит зависимости, создаст `.env` и настроит systemd.
 
 ## Настройка .env
