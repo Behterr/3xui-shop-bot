@@ -13,8 +13,7 @@ echo "Папка установки: ${APP_DIR}"
 
 read -r -p "Токен бота (BOT_TOKEN): " BOT_TOKEN
 read -r -p "Юзернейм бота без @ (BOT_USERNAME): " BOT_USERNAME
-read -r -p "URL панели 3X-UI (XUI_BASE_URL): " XUI_BASE_URL
-read -r -p "Путь панели 3X-UI (XUI_WEB_BASE_PATH) [пусто если нет]: " XUI_WEB_BASE_PATH
+read -r -p "URL панели 3X-UI (можно с путем) (XUI_BASE_URL): " XUI_FULL_URL
 read -r -p "Логин 3X-UI (XUI_USERNAME): " XUI_USERNAME
 read -r -p "Пароль 3X-UI (XUI_PASSWORD): " XUI_PASSWORD
 read -r -p "Игнорировать SSL‑сертификат панели? (XUI_INSECURE, true/false) [false]: " XUI_INSECURE
@@ -85,6 +84,14 @@ fi
 echo "== Создание виртуального окружения =="
 sudo python3 -m venv "$APP_DIR/.venv"
 sudo "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirements.txt"
+
+XUI_FULL_URL="${XUI_FULL_URL%/}"
+XUI_BASE_URL="$XUI_FULL_URL"
+XUI_WEB_BASE_PATH=""
+if echo "$XUI_FULL_URL" | grep -qE "https?://[^/]+/.+"; then
+  XUI_BASE_URL="$(echo "$XUI_FULL_URL" | sed -E 's#(https?://[^/]+).*#\\1#')"
+  XUI_WEB_BASE_PATH="$(echo "$XUI_FULL_URL" | sed -E 's#https?://[^/]+##')"
+fi
 
 echo "== Запись .env =="
 sudo tee "$APP_DIR/.env" > /dev/null <<EOF
