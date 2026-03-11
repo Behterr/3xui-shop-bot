@@ -73,7 +73,9 @@ fi
 if [ -d "$APP_DIR/.git" ]; then
   echo "== Репозиторий уже есть, обновляю =="
   sudo git -C "$APP_DIR" remote set-url origin "$REPO_URL"
-  sudo GIT_TERMINAL_PROMPT=0 git -C "$APP_DIR" -c credential.interactive=never -c credential.helper= pull
+  sudo git -C "$APP_DIR" config --local --unset-all http.https://github.com/.extraheader >/dev/null 2>&1 || true
+  sudo git -C "$APP_DIR" config --local --unset-all credential.helper >/dev/null 2>&1 || true
+  sudo GIT_TERMINAL_PROMPT=0 git -C "$APP_DIR" -c credential.interactive=never -c credential.helper= -c http.https://github.com/.extraheader= pull --ff-only
 else
   echo "== Клонирую репозиторий =="
   sudo mkdir -p "$APP_DIR"
