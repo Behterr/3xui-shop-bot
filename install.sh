@@ -6,9 +6,13 @@ clear
 APP_DIR="/opt/3xui-shopbot"
 REPO_URL="https://github.com/Behterr/3xui-shop-bot.git"
 
-echo "== Установщик 3X-UI ShopBot (Ubuntu) =="
-
+echo "=========================================="
+echo "  Установщик 3X-UI ShopBot (Ubuntu)"
+echo "=========================================="
+echo ""
 echo "Папка установки: ${APP_DIR}"
+echo "Репозиторий: ${REPO_URL}"
+echo ""
 
 
 read -r -p "Токен бота (BOT_TOKEN): " BOT_TOKEN
@@ -31,6 +35,8 @@ INSTALL_ADMIN_WEB="$(echo "$INSTALL_ADMIN_WEB" | tr '[:upper:]' '[:lower:]')"
 if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
   read -r -p "Логин веб‑админки (ADMIN_WEB_USER): " ADMIN_WEB_USER
   read -r -p "Пароль веб‑админки (ADMIN_WEB_PASSWORD): " ADMIN_WEB_PASSWORD
+  read -r -p "Домен для веб‑панели (например admin.example.com) [пусто = без домена]: " ADMIN_DOMAIN
+  read -r -p "Email для Let's Encrypt (можно оставить пустым) [optional]: " ADMIN_SSL_EMAIL
   ADMIN_WEB_SECRET="$(python3 - <<'PY'
 import secrets
 print(secrets.token_hex(32))
@@ -40,6 +46,8 @@ else
   ADMIN_WEB_USER=""
   ADMIN_WEB_PASSWORD=""
   ADMIN_WEB_SECRET=""
+  ADMIN_DOMAIN=""
+  ADMIN_SSL_EMAIL=""
 fi
 
 
@@ -67,6 +75,14 @@ else
   echo "== Установка/обновление пакетов =="
   sudo apt update
   sudo apt install -y "${PACKAGES[@]}"
+fi
+
+if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
+  if [ -n "${ADMIN_DOMAIN:-}" ]; then
+    echo "== Подготовка Nginx + Certbot =="
+    sudo apt update
+    sudo apt install -y nginx certbot python3-certbot-nginx
+  fi
 fi
 
 if [ -d "$APP_DIR/.git" ]; then
@@ -158,6 +174,34 @@ if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
 else
   sudo systemctl enable xui-bot
   sudo systemctl restart xui-bot
+fi
+
+if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
+  if [ -n "${ADMIN_DOMAIN:-}" ]; then
+    echo "== Настройка домена для веб‑панели =="
+    sudo tee /etc/nginx/sites-available/xui-admin > /dev/null <<EOF
+server {
+    listen 80;
+    server_name ${ADMIN_DOMAIN};
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+    sudo ln -sf /etc/nginx/sites-available/xui-admin /etc/nginx/sites-enabled/xui-admin
+    sudo nginx -t
+    sudo systemctl reload nginx
+    if [ -n "${ADMIN_SSL_EMAIL:-}" ]; then
+      sudo certbot --nginx -d "${ADMIN_DOMAIN}" --email "${ADMIN_SSL_EMAIL}" --agree-tos --non-interactive
+    else
+      sudo certbot --nginx -d "${ADMIN_DOMAIN}" --register-unsafely-without-email --agree-tos --non-interactive
+    fi
+  fi
 fi
 
 echo "== Готово =="
