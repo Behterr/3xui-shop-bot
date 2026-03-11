@@ -286,18 +286,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _show_main_menu(update, context, user)
 
 
-async def plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = _ensure_user(update)
-    if _is_blocked(user) and not _is_admin(update):
-        await _send_or_edit(update, context, "Ваш доступ ограничен. Обратитесь в поддержку.")
-        return
-    await _send_or_edit(
-        update,
-        context,
-        "Доступные тарифы:",
-        reply_markup=_plans_menu(),
-    )
-
+async def handle_any_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        if update.effective_message:
+            await update.effective_message.delete()
+    except Exception:
+        pass
+    await start(update, context)
 
 def _parse_clients(settings_text):
     try:
@@ -1075,11 +1070,7 @@ def main():
     asyncio.set_event_loop(asyncio.new_event_loop())
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("plans", plans))
-    app.add_handler(CommandHandler("status", status))
-    app.add_handler(CommandHandler("mysubscriptions", my_subscriptions))
-    app.add_handler(CommandHandler("menu", start))
+    app.add_handler(MessageHandler(filters.COMMAND, handle_any_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(PreCheckoutQueryHandler(precheckout_handler))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
