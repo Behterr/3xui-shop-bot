@@ -87,14 +87,13 @@ chmod +x install.sh
 Тарифы хранятся в `config/plans.json`.
 Важно: `inboundId` должен совпадать с inbound ID в 3X‑UI.
 
-## Обновление на VPS
+## Быстрое обновление на VPS
 
 ```
-cd /home/ubuntu/3xui-shopbot
+cd /opt/3xui-shopbot
 git pull
-source .venv/bin/activate
-pip install -r requirements.txt
-sudo systemctl restart xui-bot xui-admin
+sudo systemctl restart xui-bot
+sudo systemctl restart xui-admin
 ```
 
 ## Примечания по оплате Telegram Stars
