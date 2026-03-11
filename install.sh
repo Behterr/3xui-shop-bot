@@ -35,7 +35,14 @@ INSTALL_ADMIN_WEB="$(echo "$INSTALL_ADMIN_WEB" | tr '[:upper:]' '[:lower:]')"
 if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
   read -r -p "Логин веб‑админки (ADMIN_WEB_USER): " ADMIN_WEB_USER
   read -r -p "Пароль веб‑админки (ADMIN_WEB_PASSWORD): " ADMIN_WEB_PASSWORD
-  read -r -p "Домен для веб‑панели (например admin.example.com) [пусто = без домена]: " ADMIN_DOMAIN
+  read -r -p "Домен для веб‑панели (например admin.example.com) [пусто = сгенерировать]: " ADMIN_DOMAIN
+  if [ -z "${ADMIN_DOMAIN:-}" ]; then
+    SERVER_IP="$(curl -s https://api.ipify.org || true)"
+    if [ -n "${SERVER_IP:-}" ]; then
+      ADMIN_DOMAIN="admin.${SERVER_IP//./-}.sslip.io"
+      echo "Сгенерирован домен: ${ADMIN_DOMAIN}"
+    fi
+  fi
   read -r -p "Email для Let's Encrypt (можно оставить пустым) [optional]: " ADMIN_SSL_EMAIL
   ADMIN_WEB_SECRET="$(python3 - <<'PY'
 import secrets
