@@ -4,7 +4,7 @@ set -euo pipefail
 clear
 
 APP_DIR="/opt/3xui-shopbot"
-REPO_URL="https://github.com/Behterr/3xui-shopbot.git"
+REPO_URL="https://github.com/Behterr/3xui-shop-bot.git"
 
 echo "== Установщик 3X-UI ShopBot (Ubuntu) =="
 
