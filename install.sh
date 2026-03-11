@@ -32,7 +32,11 @@ INSTALL_ADMIN_WEB="$(echo "$INSTALL_ADMIN_WEB" | tr '[:upper:]' '[:lower:]')"
 if [ "$INSTALL_ADMIN_WEB" = "y" ] || [ "$INSTALL_ADMIN_WEB" = "yes" ]; then
   read -r -p "Логин веб‑админки (ADMIN_WEB_USER): " ADMIN_WEB_USER
   read -r -p "Пароль веб‑админки (ADMIN_WEB_PASSWORD): " ADMIN_WEB_PASSWORD
-  read -r -p "Секрет сессий (ADMIN_WEB_SECRET): " ADMIN_WEB_SECRET
+  ADMIN_WEB_SECRET="$(python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)"
 else
   ADMIN_WEB_USER=""
   ADMIN_WEB_PASSWORD=""
