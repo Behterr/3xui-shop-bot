@@ -93,7 +93,7 @@ chmod +x install.sh
 cd /opt/3xui-shopbot
 git pull
 sudo systemctl restart xui-bot
-sudo systemctl restart xui-admin
+sudo systemctl restart xui-admin (если установлена веб панель)
 ```
 
 ## Примечания по оплате Telegram Stars
