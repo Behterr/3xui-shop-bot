@@ -25,8 +25,8 @@
 
 2. Клонировать проект:
    ```
-   git clone https://github.com/Behterr/3xui-shopbot.git
-   cd 3xui-shopbot
+   git clone https://github.com/Behterr/3xui-shop-bot.git
+   cd 3xui-shop-bot
    ```
 
 3. Установить Python зависимости:
@@ -90,7 +90,7 @@ chmod +x install.sh
 ## Быстрое обновление на VPS
 
 ```
-cd /opt/3xui-shopbot
+cd /opt/3xui-shop-bot
 git pull
 sudo systemctl restart xui-bot
 sudo systemctl restart xui-admin (если установлена веб панель)
