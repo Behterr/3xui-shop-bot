@@ -244,13 +244,22 @@ def _ensure_user(update: Update):
 
 async def _send_or_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, text, reply_markup=None):
     if update.callback_query and update.callback_query.message:
-        msg = await update.callback_query.edit_message_text(
-            text,
-            reply_markup=reply_markup,
-        )
-        user = get_user_by_tg_id(DB, update.effective_user.id)
-        if user and msg:
-            set_last_message_id(DB, user[0], msg.message_id)
+        try:
+            msg = await update.callback_query.edit_message_text(
+                text,
+                reply_markup=reply_markup,
+            )
+            user = get_user_by_tg_id(DB, update.effective_user.id)
+            if user and msg:
+                set_last_message_id(DB, user[0], msg.message_id)
+        except Exception as exc:
+            try:
+                from telegram.error import BadRequest
+                if isinstance(exc, BadRequest) and "Message is not modified" in str(exc):
+                    return
+            except Exception:
+                pass
+            raise
         return
 
     user = _ensure_user(update)
