@@ -17,7 +17,7 @@ read -r -p "URL панели 3X-UI (XUI_BASE_URL): " XUI_BASE_URL
 read -r -p "Путь панели 3X-UI (XUI_WEB_BASE_PATH) [пусто если нет]: " XUI_WEB_BASE_PATH
 read -r -p "Логин 3X-UI (XUI_USERNAME): " XUI_USERNAME
 read -r -p "Пароль 3X-UI (XUI_PASSWORD): " XUI_PASSWORD
-read -r -p "XUI_INSECURE (true/false) [false]: " XUI_INSECURE
+read -r -p "Игнорировать SSL‑сертификат панели? (XUI_INSECURE, true/false) [false]: " XUI_INSECURE
 XUI_INSECURE="${XUI_INSECURE:-false}"
 
 read -r -p "Базовый URL подписки (SUBSCRIPTION_BASE_URL): " SUBSCRIPTION_BASE_URL
